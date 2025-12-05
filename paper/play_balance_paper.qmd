@@ -1,0 +1,179 @@
+---
+title: "Analyzing the Relationship Between Run Play Emphasis and Score Differential in the NFL(1999-2022)"
+subtitle: "A Simple Linear Regression Shows a Positive Association"
+author: "Giovanni Hsieh"
+thanks: "Project repository available at: [https://github.com/giovannihsieh/MATH261A-project](https://github.com/giovannihsieh/MATH261A-project)."
+date: today
+date-format: long
+abstract: "This study examines the relationship between run play emphasis and team score differential in the NFL using data from 1999-2022. Run play emphasis was defined as the number of run plays divided by the number of pass plays, and a simple linear regression model was fitted with score differential as the response variable and run play emphasis as the predictor variable. The results show a statistically significant positive association between run play emphasis and score differential, suggesting that teams with a greater emphasis on rushing plays tend to have higher score differentials, reflecting higher overall team strength and more wins. These results may help NFL teams optimize offensive playcalls and resource allocation for the draft and offseason priorities. Future work includes performing this analysis with multiple predictors such as defensive statistics, examining changes in run play emphasis over time, and exploring factors influencing playoff success."
+format: pdf
+bibliography: references.bib
+number-sections: true
+---
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+# load libraries
+library(tidyverse)
+library(ggpubr)
+library(patchwork)
+library(nflreadr)
+```
+
+# Introduction
+
+I wanted to look at the question of whether a team's emphasis on rushing plays is important for winning games. As the NFL has become more and more pass heavy in pursuit of higher entertainment value and higher profits, I wanted to see if run play emphasis is still important for the success of NFL teams. Previous analyses from sources like Pro Football Focus [@pff_article] have found that passing plays generally yield higher expected points, but successful teams tend to maintain an effective rushing offense. The articles also highlight the importance of explosive plays, which favor passing plays compared to rushing plays. I built on these previous findings by examining whether a team's run play emphasis influences score differential. This analysis focuses more on the team success level rather than play level efficiency.
+
+In this paper, run play emphasis is defined as the number of rushing plays divided by the number of passing plays.
+
+$$e = \frac{run}{pass} $$
+
+A value of e = 1 roughly represents a balanced offense, e \< 1 represents a pass heavy offense, and e \> 1 represents a rush heavy offense. The score differential is defined as the total points scored minus the total points allowed throughout the whole regular season, and is the metric used for representing overall team performance.
+
+The answer to this question could have many implications. If pass heavy offenses are the future of the NFL, positions that are more important for passing (QB, WR, LT) may become more desirable and more of a focus for teams in the draft and offseason. Positions that are more traditionally involved in the run offense (RB, OG) may see lower salaries and draft priority. We expect that there should be a positive correlation between run play emphasis and score differential because having a more diverse offense playbook makes a team's offense less predictable for the defense. This would increase the chance for a team to generate offensive success if the defense has to prepare for both a passing and rushing offense. The findings can help NFL team management decide where to put draft and free agency resources for future seasons.
+
+@sec-data introduces the data used in this analysis. @sec-methods describes the model used. @sec-results discusses the analysis of the results and conclusions that can be drawn. @sec-discussion discusses potential strengths and weaknesses of the analysis, and some future steps.
+
+# Data {#sec-data}
+
+The `nfl-team-statistics` dataset [@nfl_data] provides data about the regular season performance for each NFL team from 1999 to 2022. Each row in the dataset corresponds to a single NFL team in a single regular season and includes information about wins, losses, score differential, and various offensive and defensive metrics. My analysis focuses on the run play emphasis represented by the ratio between the number of run plays and pass plays a team ran in a given season. This was calculated using the offense_n_plays_run and the offense_n_plays_pass columns in the dataset. $$e = \frac{run}{pass} $$ Where e is the run play emphasis, run is the number of run plays, and pass is the number of pass plays. Therefore, a value of e = 1 roughly represents a balanced offense, e \< 1 represents a pass heavy offense, and e \> 1 represents a rush heavy offense. We are specifically interested in run play emphasis because the NFL has been said to have become a passing offense focused league over time.
+
+One thing to note is that the data uses NFL seasons from 1999-2022. There have been rule changes in the 2000s and 2010s that favor quarterbacks and receivers that potentially led to increases in passing plays throughout a season. The 1999-2022 seasons were chosen to provide sufficient variation across team seasons.
+
+```{r fig-rpe-scatter}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-cap: "Scatter plot of run play emphasis (x-axis) and score differential (y-axis) with fitted linear regression model."
+#| fig-pos: "H"
+
+# read in nfl data
+nfl_data <- read_csv("../data/nfl-team-statistics.csv")
+
+# calculate run play emphasis by ratio
+nfl_data <- nfl_data |>
+  mutate(
+    run_play_emphasis = offense_n_plays_run / offense_n_plays_pass
+  )
+
+# plot
+ggplot(nfl_data, aes(x = run_play_emphasis, y = score_differential)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  stat_regline_equation(label.x = 1.25, label.y = 300) +
+  theme_pubr() +
+  ylab("Score Differential") +
+  xlab("Run Play Emphasis") +
+  ggtitle("Relationship Between Run Play Emphasis\nand Score Differential")
+```
+
+@fig-rpe-scatter indicates a positive linear association between run play emphasis and score differential.
+
+# Methods {#sec-methods}
+
+I fit the simple linear regression model.
+
+$$Y_i = \beta_0 +\beta_1 X_i + \varepsilon_i$$
+
+In this model, $Y_i$ represents the score differential of a team in a given season. $X_i$ represents the run play emphasis calculated by the number of run plays divided by the number of pass plays a team ran in a given season. $\beta_1$ represents the slope, or the expected score differential change when the run play emphasis increases by 1. $\beta_0$ represents the intercept, or the expected score differential when the run play emphasis is 0 (pass only offense with 0 run plays the whole season). $\varepsilon_i$ represents the error terms, or the variation in score differential that is not explained by the model.
+
+The error terms $\varepsilon_i$ are assumed to meet the following criteria: 
+
+1.**Variance of errors:** $Var[\varepsilon_i] = \sigma^2$, meaning the spread of errors is consistent across all predictor values.  
+2.**Independence of errors:** Every $\varepsilon_i$ is independent from the others, meaning error for one team season does not affect the error for another.  
+3.**Normality of errors:** $\varepsilon_i \sim N(0, \sigma\^2)$, normality of errors ensures t-tests and confidence intervals are valid.
+
+In addition to the error assumptions, the linearity assumption states that the expected value of $Y_i$ is a linear function of $X_i$.
+$$ E[Y_i | X_i] = \beta_0 + \beta_1 X_i$$
+I looked at the residual vs predictor plot and a quantile-quantile plot to help validate these assumptions. For linearity, the residual plot should look evenly spread around the residual = 0 line, with no clear patterns. Normality of errors would have points on the quantile-quantile plot along the reference line. Constant error variance would have a residual vs predictor plot that is evenly spread rather than having a cone like shape.
+
+One limitation of this analysis is that the model uses a single predictor $\beta_1$. The model is only looking at run play emphasis as a predictor without considering other factors that could affect the score differential such as defense strength and turnovers. Another limitation is for independence. Since the data contains the same team over multiple seasons, those points are not independent. A team's performance in one season should affect how they will perform in the next season. Also, score differentials are negatively dependent across teams because the sum of all team score differentials must equal zero. One last potential limitation is the measurement of run play emphasis is calculated with the number of plays and not play quality. This means the ratio is not taking into account how many yards are gained and the efficiency of each play.
+
+I performed a two-sided t-test on the slop coefficient $\beta_1$ of the linear regression model used above. The hypotheses for the test are:
+
+$$H_0: \beta_1 = 0$$ $$H_A: \beta_1 \neq 0$$ The t-test statistic is calculated as follows: $$ t = \frac{\hat{\beta}_1}{SE(\hat{\beta}_1)}$$ $\hat{\beta}_1$ is the estimated slope, and $SE(\hat{\beta}_1)$ is its standard error.
+
+The test statistic $t$ and p-value $p$ gives us a calculation of how likely it is for us to observe the estimated slope in the model if the true slope was 0. The t-test has the same assumptions as the simple linear regression model.
+
+I implemented this analysis using the R programming language [@R_language] using the lm_fit function. The plots were done using the ggplot function.
+
+# Results {#sec-results}
+
+```{r rpe-lm}
+#| echo: false
+#| warning: false
+#| message: false
+lm_fit <- lm(score_differential ~ run_play_emphasis, data = nfl_data)
+```
+
+The estimated slope parameter is $b_1=$ `r round(coefficients(lm_fit)[2], 3)`. In other words, for each one unit increase in run play emphasis, the expected change in score differential is `r round(coefficients(lm_fit)[2], 3)`.
+
+The estimated intercept is $b_0=$ `r round(coefficients(lm_fit)[1], 3)`. In other words, the predicted score differential of a team with a run play emphasis of 0. This technically means a team that only does pass plays and never runs the ball, which is not useful in this analysis.
+
+```{r fig-rpe-residual}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-cap: "Scatter plot of fitted values (x-axis) and residuals (y-axis) for a simple linear regression with score differential as the response and run play emphasis as the predictor."
+#| fig-pos: "H"
+plot_dat <- data.frame(
+  resid = resid(lm_fit),
+  fitted = fitted(lm_fit)
+)
+ggplot(plot_dat, aes(x = fitted, y = resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  theme_pubr() +
+  ylab("Residual (observed - fitted)") +
+  xlab("Fitted value") +
+  ggtitle("Residuals vs. fitted value plot")
+```
+
+@fig-rpe-residual shows the residuals vs. fitted value plot. The errors seem to be spread out relatively evenly, validating the linearity assumption. There also looks to be constant error variance due to an even spread without a clear cone shape in the residuals.
+
+```{r fig-rpe-qqplot}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-cap: "Q-Q plot of residuals from a simple linear regression with score differential as the response and run play emphasis as the predictor."
+#| fig-pos: "H"
+plot_dat <- data.frame(resid = resid(lm_fit))
+
+ggplot(plot_dat, aes(sample = resid)) +
+  stat_qq() +
+  stat_qq_line(color = "red") +
+  theme_pubr() +
+  ylab("Sample Quantiles") +
+  xlab("Theoretical Quantiles") +
+  ggtitle("Q-Q Plot of Residuals")
+```
+
+@fig-rpe-qqplot shows the quantile-quantile plot. The errors seem to be normal, as the residuals lie close to the reference line shown in red.
+
+```{r rpe-test}
+#| echo: false
+#| warning: false
+#| message: false
+# get summary of lm
+summary <- summary(lm_fit)
+
+# get t-value and p-value
+t_value <- summary$coefficients["run_play_emphasis", "t value"]
+p_value <- summary$coefficients["run_play_emphasis", "Pr(>|t|)"]
+```
+
+I use a two-sided t-test to compare the null hypothesis $\beta_1=0$ with the two-sided alternative hypothesis $\beta_1\not=0$. In order for this test to be valid, we require that the relationship between offense balance and score differential is linear, there is constant variance, errors are normally distributed, and independence of error terms. The independence assumption is questionable for two reasons. First, repeated observations for the same team over different seasons (Niners in 2011 vs Niners in 2012) are probably not independent. Second, within a season, score differentials are negatively dependent across teams because the sum of all team score differentials must equal zero. The violation of independence for score differentials may not change the estimated slope, but it is still a limitation of the model.
+
+The test statistic is $t=$ `r round(summary(lm_fit)$coefficients["run_play_emphasis", "t value"], 3)`. The p-value is $p=$ `r signif(summary(lm_fit)$coefficients["run_play_emphasis", "Pr(>|t|)"], 3)`. The test statistic means that the estimated slope is many standard errors away from 0, and the p-value means that there is an extremely small chance of observing this slope estimate if the true slope were actually 0. Because of the very large t-value and extremely small p-value, the test indicates that run play emphasis is statistically significantly associated with score differential.
+
+# Discussion {#sec-discussion}
+
+Overall, there does seem to be a positive linear association between run play emphasis and score differential. Therefore, having a more diverse playbook and an emphasis on rushing plays rather than just focusing on pass plays is associated with having a better score differential and therefore more wins in the NFL. This means that NFL teams should continue to invest resources into both the passing and rushing game rather than just focusing on the passing game, even though recent rule changes have favored the passing game.
+
+Some limitations of the model include using only a single predictor (run play emphasis), error independence assumptions, and measurement of the run play emphasis. Including multiple predictors like defense for predicting score differential would result in a model that better explains what is driving differences in score differential. Independence is a concern for two reasons. First, repeated observations for the same team across seasons are probably not independent, since a bad team in one season is probably also a bad team in the next season. Second, within a given season, the sum of all team score differentials must equal zero, meaning score differentials are negatively dependent across teams. Having poor performance from players could also be a bigger factor in score differential rather than offensive play selection. Furthermore, the measurement of offense play balance used in this model was a simple ratio of the number of pass and run plays. The model does not factor play quality like yards gained and efficiency, two factors which might help make the model more robust. Lastly, the regression model used does not imply causality. One big potential factor is that strong teams tend to have score leads, which incentivizes them to run the ball more to drain the clock. This is because running the ball is safer (fumbles are less likely than interceptions), and running the ball does not stop the clock compared to incompletions from passing.
+
+Some future steps could be a multiple linear regression using both offensive stats and defensive stats to predict score differential. This model would let us see which variables are affecting score differential the most. Another potential question would be how NFL offenses are evolving over time. The media has suggested that over time, the NFL has become a more pass focused league as passing offenses tend to have more explosive plays and are more entertaining to watch for fans. Checking for trends over time could verify if that is actually the case. For data collection, I think an important statistic is how well teams do in the playoffs and ultimately, which team wins the Superbowl. There have always been teams that perform well in the regular season but lose out in the playoffs, and looking at what statistics increase a team's chances of winning in the playoffs and the Superbowl would be valuable information for NFL teams.
+
+# References
