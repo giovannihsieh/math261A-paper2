@@ -1,11 +1,11 @@
 ---
-title: "Analyzing the Relationship Between Run Play Emphasis and Score Differential in the NFL(1999-2022)"
-subtitle: "A Simple Linear Regression Shows a Positive Association"
+title: "Predicting Asthma Emergency Department Visit Rates Across California Census Tracts"
+subtitle: "A Multiple Linear Regression Model Incorporating Air Pollution and Socioeconomic Factors"
 author: "Giovanni Hsieh"
-thanks: "Project repository available at: [https://github.com/giovannihsieh/MATH261A-project](https://github.com/giovannihsieh/MATH261A-project)."
+thanks: "Project repository available at: [https://github.com/giovannihsieh/math261A-paper2](https://github.com/giovannihsieh/math261A-paper2)."
 date: today
 date-format: long
-abstract: "This study examines the relationship between run play emphasis and team score differential in the NFL using data from 1999-2022. Run play emphasis was defined as the number of run plays divided by the number of pass plays, and a simple linear regression model was fitted with score differential as the response variable and run play emphasis as the predictor variable. The results show a statistically significant positive association between run play emphasis and score differential, suggesting that teams with a greater emphasis on rushing plays tend to have higher score differentials, reflecting higher overall team strength and more wins. These results may help NFL teams optimize offensive playcalls and resource allocation for the draft and offseason priorities. Future work includes performing this analysis with multiple predictors such as defensive statistics, examining changes in run play emphasis over time, and exploring factors influencing playoff success."
+abstract: "Asthma is a leading cause of emergency department (ED) visits in the United States, and has been linked to various air pollution and socioeconomic factors. This study uses census tract level data from CalEnviroScreen 4.0 to develop a multiple linear regression model that predicts age-adjusted asthma ED visit rates in California. Predictor variables include fine particulate matter (PM2.5), ozone concentration, diesel particulate matter (PM), traffic density, and poverty percentage Traffic density, diesel PM, and poverty percentage were log-transformed to address skewness. The model's predictive performance was evaluated using 10-fold cross-validation. The root mean squared error (RMSE) was 26.24, roughly half of the mean asthma ED visit rate of 52.06. While multicollinearity and different variable scaling make individual slope interpretations unreliable, the model captures general trends across census tracts in California, providing a good baseline for population level asthma risk prediction."
 format: pdf
 bibliography: references.bib
 number-sections: true
@@ -19,126 +19,254 @@ number-sections: true
 library(tidyverse)
 library(ggpubr)
 library(patchwork)
-library(nflreadr)
+library(readxl)
+library(ggplot2)
+library(dplyr)
 ```
 
 # Introduction
 
-I wanted to look at the question of whether a team's emphasis on rushing plays is important for winning games. As the NFL has become more and more pass heavy in pursuit of higher entertainment value and higher profits, I wanted to see if run play emphasis is still important for the success of NFL teams. Previous analyses from sources like Pro Football Focus [@pff_article] have found that passing plays generally yield higher expected points, but successful teams tend to maintain an effective rushing offense. The articles also highlight the importance of explosive plays, which favor passing plays compared to rushing plays. I built on these previous findings by examining whether a team's run play emphasis influences score differential. This analysis focuses more on the team success level rather than play level efficiency.
+According to the CDC [@cdc_namcs], asthma is a leading cause of emergency department (ED) visits in the United States, recording almost 1 million visits per year. Asthma can be caused by various triggers such as family history, allergies, respiratory infections, and air pollution. The Asthma and Allergy Foundation of America [@aafa_asthma_facts] refers to asthma as one of the most common and costly diseases in the United States. This paper investigates different air pollution and socioeconomic indicators as predictors of asthma related ED visits in California.
 
-In this paper, run play emphasis is defined as the number of rushing plays divided by the number of passing plays.
+A population level prediction model can help identify areas at higher risk for asthma related ED visits. These predictions can guide environmental health policies and community measures in high risk areas. Although studies [@asthma_pollution_paper] have linked asthma to air pollution indicators, relatively few have focused on developing prediction models. Existing prediction models [@asthma_prediction_paper] rely on various air pollution indicators to predict asthma related hospital visits using machine learning and deep learning techniques. However, many of these models use controlled and limited population datasets and exclude socioeconomic control variables. To address this gap, my proposed multiple regression model uses statewide census-tract data and incorporates both air pollution indicators and poverty percentage as a key socioeconomic factor to accurately predict age-adjusted asthma ED visit rates in California.
 
-$$e = \frac{run}{pass} $$
+To address this research question, I analyzed census tract level data from CalEnviroScreen 4.0 using a multiple linear regression model. The outcome variable is the age-adjusted rate of emergency department visits for asthma. The predictor variables include fine particle (PM2.5) concentration, ozone concentration, diesel particulate matter emissions, traffic density, and the poverty percentage. The model is used to estimate the relationship between asthma ED visits and each predictor variable while holding other variables constant. Because the primary goal of the analysis is prediction, model performance is evaluated using root mean squared error (RMSE) estimated via k-fold cross validation (k=10). To address right skewness, traffic density, diesel PM, and poverty were log-transformed prior to model fitting.
 
-A value of e = 1 roughly represents a balanced offense, e \< 1 represents a pass heavy offense, and e \> 1 represents a rush heavy offense. The score differential is defined as the total points scored minus the total points allowed throughout the whole regular season, and is the metric used for representing overall team performance.
-
-The answer to this question could have many implications. If pass heavy offenses are the future of the NFL, positions that are more important for passing (QB, WR, LT) may become more desirable and more of a focus for teams in the draft and offseason. Positions that are more traditionally involved in the run offense (RB, OG) may see lower salaries and draft priority. We expect that there should be a positive correlation between run play emphasis and score differential because having a more diverse offense playbook makes a team's offense less predictable for the defense. This would increase the chance for a team to generate offensive success if the defense has to prepare for both a passing and rushing offense. The findings can help NFL team management decide where to put draft and free agency resources for future seasons.
+Using the multiple linear regression model, estimated coefficients suggest expected associations between asthma ED visit rates and the predictor variables. However, individual slope estimates, especially ozone, are affected by multicollinearity and different variable scaling, making them unreliable for interpretation. The 10-fold cross validated RMSE was roughly half of the mean asthma ED visit rate, suggesting limited predictive model performance. The residual plots revealed some heteroscedasticity and deviations from normality, but these issues are less of a concern for prediction. Overall, the model captures general trends in asthma ED visits across California census tracts and represents a good baseline for population level asthma risk prediction.
 
 @sec-data introduces the data used in this analysis. @sec-methods describes the model used. @sec-results discusses the analysis of the results and conclusions that can be drawn. @sec-discussion discusses potential strengths and weaknesses of the analysis, and some future steps.
 
 # Data {#sec-data}
 
-The `nfl-team-statistics` dataset [@nfl_data] provides data about the regular season performance for each NFL team from 1999 to 2022. Each row in the dataset corresponds to a single NFL team in a single regular season and includes information about wins, losses, score differential, and various offensive and defensive metrics. My analysis focuses on the run play emphasis represented by the ratio between the number of run plays and pass plays a team ran in a given season. This was calculated using the offense_n_plays_run and the offense_n_plays_pass columns in the dataset. $$e = \frac{run}{pass} $$ Where e is the run play emphasis, run is the number of run plays, and pass is the number of pass plays. Therefore, a value of e = 1 roughly represents a balanced offense, e \< 1 represents a pass heavy offense, and e \> 1 represents a rush heavy offense. We are specifically interested in run play emphasis because the NFL has been said to have become a passing offense focused league over time.
+The `calenviroscreen` dataset [@calenviroscreen] contains data of census tracts in California based on potential exposures to pollutants, adverse environmental conditions, socioeconomic factors, and the prevalence of certain health conditions. The observational unit in this dataset are California census tracts. All outcome and predictor variables are measured or modeled at the census tract level. Because no individual level information is included, the analysis is at the population level.
 
-One thing to note is that the data uses NFL seasons from 1999-2022. There have been rule changes in the 2000s and 2010s that favor quarterbacks and receivers that potentially led to increases in passing plays throughout a season. The 1999-2022 seasons were chosen to provide sufficient variation across team seasons.
+The outcome variable is the age-adjusted rate of emergency department (ED) visits for asthma. Age adjustment is used to control for age since asthma hospitalization risk is strongly correlated with age. The rate of ED visits for asthma was calculated through a multi-step process. First, records for ED visits with a primary diagnosis of asthma were obtained from statewide OSHPD files using codes identifying asthma (ICD-9 and ICD-10). The age-adjusted rate for each ZIP code was calculated using ESRI population estimates standardized to the 2000 US population using five year age groupings (0-4, 5-9, etc.). The rates are per 10,000 residents per year. Spatial modeling was applied to stabilize estimates for ZIP codes with fewer than 12 ED visits. Lastly, census block were assigned the average rate of the ZIP code they intersected using areal apportionment. The rates were then estimated by the population weighted average of the rates of the census blocks it contains. Because some census tracts use spatially modeled values if there was not enough data, modeled values may reduce variability or introduce smoothing in the outcome.
 
-```{r fig-rpe-scatter}
-#| echo: false
-#| warning: false
-#| message: false
-#| fig-cap: "Scatter plot of run play emphasis (x-axis) and score differential (y-axis) with fitted linear regression model."
-#| fig-pos: "H"
+Predictor variables include annual mean fine particle (PM2.5) concentration, daily maximum 8-hour ozone concentration, diesel particulate matter emissions, traffic density, and the percentage of residents living below two times the federal poverty level. Each predictor variable has been organized into it's own section describing how it was collected or transformed, and whether there are any limitations.
 
-# read in nfl data
-nfl_data <- read_csv("../data/nfl-team-statistics.csv")
+**PM2.5(**$\mu g/m^3$**):** Fine particle pollution (PM2.5) was defined as the annual mean PM2.5 concentration over three years. PM2.5 data was extracted for all monitoring sites in California from CARB's air monitoring network database. This data was combined with satellite-based Aerosol Optical Depth (AOD) measurements. Census tract estimates were computed by averaging 1x1km grid cells overlapping tract boundaries. A potential limitation is that census tracts that were far from a monitoring site had to rely mainly on satellite data for estimates.
 
-# calculate run play emphasis by ratio
-nfl_data <- nfl_data |>
-  mutate(
-    run_play_emphasis = offense_n_plays_run / offense_n_plays_pass
-  )
+**Ozone(ppm):** Ozone was defined as the mean of summer months (May-October) of the daily maximum 8-hour ozone concentration (ppm), averaged over three years. Ozone data was obtained from California Air Resources Board's (CARB's) air monitoring network database like the data for PM2.5. The mean concentrations from the monitoring sites were used to model ozone concentrations across the state of California using a spatial interpolation method (ordinary kriging) and used to estimate concentrations for each census tract. The kriging model was used to estimate ozone concentrations for the center of each census tract. Census tracts that had centers more than 50km from the nearest monitor used the ozone value of the nearest air monitor instead of estimates from the model. The main limitation is that for remote areas, interpolation assumptions may affect accuracy.
 
-# plot
-ggplot(nfl_data, aes(x = run_play_emphasis, y = score_differential)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE) +
-  stat_regline_equation(label.x = 1.25, label.y = 300) +
-  theme_pubr() +
-  ylab("Score Differential") +
-  xlab("Run Play Emphasis") +
-  ggtitle("Relationship Between Run Play Emphasis\nand Score Differential")
-```
+**Diesel PM(tons/year):** Diesel particulate matter was defined as the spatial distribution of gridded diesel PM emissions from on-road and non-road sources. Diesel PM data was obtained from CARB's EMission FACtors (EMFAC) on-road emission model and the California Emission Project Analysis Model (CEPAM) for non-road sectors. Like PM2.5, emissions were allocated to 1x1km grid cells, then to census tracts based on the proportion of populated area. The biggest limitation is that the emissions are modeled, not measured concentrations, so modeling assumptions need to be taken into consideration.
 
-@fig-rpe-scatter indicates a positive linear association between run play emphasis and score differential.
+**Traffic Density(vehicle-km per hour per kilometer of roadway):** Traffic density was defined as the sum of traffic volumes adjusted by road segment length divided by total road length within 150 meters of each census tract. Traffic density was calculated by first placing a 150 meter buffer around each census tract, and ArcGIS was used to link traffic volume data from TrafficMetrix. Length-adjusted volume was summed across all roads in the buffer for each census tract, and normalized by total road length. A small limitation is that for more rural areas with fewer roads, less traffic data may affect reliability.
+
+**Poverty(%):** Poverty was defined as the percent of the population living below two times the federal poverty level. The data was derived from the 2015-2019 American Community Survey, which contained data about the number of individuals below 200 percent of the federal poverty level. To calculate the poverty percentage, the number of individuals below 200% of the poverty level was divided by the total population for whom the poverty status was determined. Since the ACS estimate is from a sample of the population unlike the census, the standard error (SE) and relative standard error (RSE) were calculated to evaluate the reliability of each estimate. Census tracts with large relative standard errors (RSE \> 50) were excluded from the data. The limitation for this variable is the sampling error that comes with a survey, and that some census tracts have no poverty estimate due to unreliable data.
+
+One important thing to note is that many of the predictor variables are highly correlated. There has been research linking fine particulate matter (PM2.5) and ozone concentration [@pm_oz_corr] as well as linking PM2.5 and diesel PM [@oz_diesel_corr]. There have been studies [@traffic_pm_corr] linking CO2 emission to traffic density, suggesting that traffic density would be highly correlated with diesel PM. However, because the purpose of the model is for prediction rather than inference about individual predictors, the model can still perform well even if some predictors have high correlation. Additionally, I am using cross-validation to evaluate predictive performance. This makes the model more robust for new data despite correlated predictors.
 
 # Methods {#sec-methods}
 
-I fit the simple linear regression model.
+I chose to perform multiple linear regression because the outcome variable is continuous and approximately normally distributed after accounting for predictors. Multiple linear regression also combines both raw and transformed predictor variables into an effective predictive model that can be supported by cross validation. The predictor variables included in the model were selected based on previous research and articles linking air pollution indicators and socioeconomic conditions to asthma related ED visits. According to a research report [@meng_pm_ozone], air pollutants such as PM2.5 and ozone can trigger symptoms among asthmatics. Another study [@mcconnell_traffic] finds that children living in areas with higher traffic density in California suffer significantly increased rates of asthma. An article [@spiracohen_diesel] found that diesel PM exacerbates asthma symptoms in children with asthma. Lastly, a paper [@wendt_poverty] found low income children had higher rates of asthma diagnoses. Poverty percentage was included in the model to control for socioeconomic disparities that can affect asthma rates.
 
-$$Y_i = \beta_0 +\beta_1 X_i + \varepsilon_i$$
+I looked at the histograms for each predictor variable to assess the shape of each the distributions and decide whether any variable transformations were needed. Based on these histograms, I decided that traffic density, diesel PM, and poverty should be log transformed, since they all had right skewness. The histograms below show the distributions before and after the log transformations.
 
-In this model, $Y_i$ represents the score differential of a team in a given season. $X_i$ represents the run play emphasis calculated by the number of run plays divided by the number of pass plays a team ran in a given season. $\beta_1$ represents the slope, or the expected score differential change when the run play emphasis increases by 1. $\beta_0$ represents the intercept, or the expected score differential when the run play emphasis is 0 (pass only offense with 0 run plays the whole season). $\varepsilon_i$ represents the error terms, or the variation in score differential that is not explained by the model.
+```{r data-import}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-cap: "Histograms of skewed variables before and after log transformation."
+#| fig-pos: "H"
+# read in calenviroscreen data
+all_data <- read_excel("../data/calenviroscreen40resultsdatadictionary_F_2021.xlsx",
+                   sheet = 1)
+data <- all_data[, c("Asthma", "PM2.5", "Ozone", "Traffic", "Diesel PM", "Poverty")]
+data <- na.omit(data)
 
-The error terms $\varepsilon_i$ are assumed to meet the following criteria: 
+# histograms for each predictor
+skewed_vars <- c("Traffic", "Diesel PM", "Poverty")
 
-1.**Variance of errors:** $Var[\varepsilon_i] = \sigma^2$, meaning the spread of errors is consistent across all predictor values.  
-2.**Independence of errors:** Every $\varepsilon_i$ is independent from the others, meaning error for one team season does not affect the error for another.  
-3.**Normality of errors:** $\varepsilon_i \sim N(0, \sigma\^2)$, normality of errors ensures t-tests and confidence intervals are valid.
+# apply log transform
+data <- data %>%
+  mutate(
+    traffic_log = log(Traffic),
+    diesel_log = log(`Diesel PM`),
+    poverty_log = log(Poverty)
+  )
+```
 
-In addition to the error assumptions, the linearity assumption states that the expected value of $Y_i$ is a linear function of $X_i$.
-$$ E[Y_i | X_i] = \beta_0 + \beta_1 X_i$$
+```{r traffic-hist}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-cap: "Original and log-transformed histogram of Traffic density."
+#| fig-pos: "H"
+p_traffic_orig <- ggplot(data, aes(x = Traffic)) +
+  geom_histogram(binwidth = 0.5, fill = "skyblue", color = "black") +
+  theme_minimal() +
+  labs(title = "Original Traffic", x = "Traffic", y = "Count")
+
+p_traffic_log <- ggplot(data, aes(x = traffic_log)) +
+  geom_histogram(binwidth = 0.2, fill = "skyblue", color = "black") +
+  theme_minimal() +
+  labs(title = "Log-transformed Traffic", x = "traffic_log", y = "Count")
+
+p_traffic_orig + p_traffic_log
+```
+
+```{r diesel-hist}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-cap: "Original and log-transformed histogram of Diesel PM concentration."
+#| fig-pos: "H"
+p_diesel_orig <- ggplot(data, aes(x = `Diesel PM`)) +
+  geom_histogram(binwidth = 0.5, fill = "skyblue", color = "black") +
+  theme_minimal() +
+  labs(title = "Original Diesel PM", x = "Diesel PM", y = "Count")
+
+p_diesel_log <- ggplot(data, aes(x = diesel_log)) +
+  geom_histogram(binwidth = 0.2, fill = "skyblue", color = "black") +
+  theme_minimal() +
+  labs(title = "Log-transformed Diesel PM", x = "diesel_log", y = "Count")
+
+p_diesel_orig + p_diesel_log
+```
+
+```{r poverty-hist}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-cap: "Original and log-transformed histogram of Poverty rate."
+#| fig-pos: "H"
+p_poverty_orig <- ggplot(data, aes(x = Poverty)) +
+  geom_histogram(binwidth = 0.5, fill = "skyblue", color = "black") +
+  theme_minimal() +
+  labs(title = "Original Poverty", x = "Poverty", y = "Count")
+
+p_poverty_log <- ggplot(data, aes(x = poverty_log)) +
+  geom_histogram(binwidth = 0.2, fill = "skyblue", color = "black") +
+  theme_minimal() +
+  labs(title = "Log-transformed Poverty", x = "poverty_log", y = "Count")
+
+p_poverty_orig + p_poverty_log
+```
+
+I fit the multiple linear regression model.
+
+$$
+A = \beta_0 + \beta_1(PM_i) + \beta_2(O_i) +
+\beta_3\log(D_i) + \beta_4\log(T_i) + \beta_5\log(P_i) + \epsilon_i
+$$
+
+Variable Definitions:
+
+$A$: Age-adjusted rate of emergency department (ED) visits for asthma in census tract i.
+
+$PM_i$: Annual mean fine particle pollution (PM2.5) over three years in $\mu g/m^3$.
+
+$O_i$: Daily maximum 8-hour ozone concentration averaged over three years in ppm.
+
+$D_i$: Diesel particulate matter in tons/year. Log-transformed ($\log(D_i)$) due to right-skewed distribution.
+
+$T_i$: Traffic density in vehicle-km per hour per kilometer of roadway. Log-transformed ($\log(T_i)$) due to right-skewed distribution.
+
+$P_i$: Poverty percentage, or percentage of residents living below two times the federal poverty level. Log-transformed ($\log(P_i)$) due to right-skewed distribution.
+
+$\varepsilon_i$: Error term for census tract i, or the variation in $A_i$ not explained by the predictor variables in the model.
+
+The error terms $\varepsilon_i$ are assumed to meet the following criteria:
+
+1.  **Homoscedasticity (constant variance) of errors:** $Var[\varepsilon_i] = \sigma^2$, meaning the spread of errors is consistent across all predictor values.
+2.  **Independence of errors:** Every $\varepsilon_i$ is independent from the others, meaning errors for one census tract do not affect errors for another.
+3.  **Normality of errors:** $\varepsilon_i \sim N(0, \sigma\^2)$, normality of errors ensures t-tests and confidence intervals are valid. Mainly important for inference, not prediction.
+4.  **Linearity**: The expected value of $A_i$ is a linear function of all predictors. $$ E[A_i | PM_i,O_i,\log D_i, \log T_i, \log P_i] = \beta_0 + \beta_1(PM_i) + \beta_2(O_i) + \beta_3\log(D_i) + \beta_4\log(T_i) + \beta_5\log(P_i)$$
+
 I looked at the residual vs predictor plot and a quantile-quantile plot to help validate these assumptions. For linearity, the residual plot should look evenly spread around the residual = 0 line, with no clear patterns. Normality of errors would have points on the quantile-quantile plot along the reference line. Constant error variance would have a residual vs predictor plot that is evenly spread rather than having a cone like shape.
 
-One limitation of this analysis is that the model uses a single predictor $\beta_1$. The model is only looking at run play emphasis as a predictor without considering other factors that could affect the score differential such as defense strength and turnovers. Another limitation is for independence. Since the data contains the same team over multiple seasons, those points are not independent. A team's performance in one season should affect how they will perform in the next season. Also, score differentials are negatively dependent across teams because the sum of all team score differentials must equal zero. One last potential limitation is the measurement of run play emphasis is calculated with the number of plays and not play quality. This means the ratio is not taking into account how many yards are gained and the efficiency of each play.
+Because the purpose of the paper is prediction rather than inference, I want to evaluate how well the model performs on new data. Even if there is multicollinearity among predictor variables, it does not harm the model's predictive performance as long as the model generalizes well. Therefore, I used k-fold cross validation (k=10), which is able to determine how stable the model's predictions are, whether there is overfitting, and how well the model generalizes for new data. Because p-values or individual coefficients are unreliable if there are highly correlated predictors, cross validation directly evaluates the model's predictive accuracy.
 
-I performed a two-sided t-test on the slop coefficient $\beta_1$ of the linear regression model used above. The hypotheses for the test are:
+I used 10-fold cross validation by dividing the dataset into 10 equally sized folds. For each fold, the model is trained on the other 9 folds, and predictions are made for the last fold. Prediction error for the last fold is recorded, and averaged with all the other runs to get cross validate root mean squared error (CVRMSE).
 
-$$H_0: \beta_1 = 0$$ $$H_A: \beta_1 \neq 0$$ The t-test statistic is calculated as follows: $$ t = \frac{\hat{\beta}_1}{SE(\hat{\beta}_1)}$$ $\hat{\beta}_1$ is the estimated slope, and $SE(\hat{\beta}_1)$ is its standard error.
-
-The test statistic $t$ and p-value $p$ gives us a calculation of how likely it is for us to observe the estimated slope in the model if the true slope was 0. The t-test has the same assumptions as the simple linear regression model.
+I looked into including interaction effects for variables like traffic density and diesel PM since the effect of traffic on asthma ED visit rates makes sense to be stronger in areas with higher diesel emissions. However, there was no significant improvement in the model's predictive performance. Therefore, I decided to only use main effects to prevent increasing model complexity and making the model more prone to overfitting.
 
 I implemented this analysis using the R programming language [@R_language] using the lm_fit function. The plots were done using the ggplot function.
 
-# Results {#sec-results}
+Some possible extensions would be to include more predictor variables, especially socioeconomic variables such as education level, race/ethnicity, or access to healthcare. Using nonlinear models like machine learning and deep learning models might also lead to higher predictive accuracy, however this would be difficult to interpret.
 
-```{r rpe-lm}
+# Results {#sec-results}
+```{r lm}
 #| echo: false
 #| warning: false
 #| message: false
-lm_fit <- lm(score_differential ~ run_play_emphasis, data = nfl_data)
+# fit multiple linear regression model
+lm_fit <- lm(
+  Asthma ~ PM2.5 + Ozone + traffic_log + diesel_log + poverty_log,
+  data = data
+)
 ```
 
-The estimated slope parameter is $b_1=$ `r round(coefficients(lm_fit)[2], 3)`. In other words, for each one unit increase in run play emphasis, the expected change in score differential is `r round(coefficients(lm_fit)[2], 3)`.
+The estimated slope parameter is $b_1=$ `r round(coefficients(lm_fit)[2], 3)`. In other words, for each one $\mu g/m^3$ increase in annual mean PM2.5, the expected change in the asthma ED visit rate is `r round(coefficients(lm_fit)[2], 3)`, holding all other predictors constant.
 
-The estimated intercept is $b_0=$ `r round(coefficients(lm_fit)[1], 3)`. In other words, the predicted score differential of a team with a run play emphasis of 0. This technically means a team that only does pass plays and never runs the ball, which is not useful in this analysis.
+The estimated slope parameter is $b_2=$ `r round(coefficients(lm_fit)[3], 3)`. In other words, for each one ppm increase in daily maximum 8-hour ozone concentration, the expected change in the asthma ED visit rate is `r round(coefficients(lm_fit)[3], 3)`, holding all other predictors constant.
 
-```{r fig-rpe-residual}
+The estimated slope parameter is $b_3=$ `r round(coefficients(lm_fit)[4], 3)`. In other words, for each one unit increase in log-transformed traffic density, the expected change in the asthma ED visit rate is `r round(coefficients(lm_fit)[4], 3)`, holding all other predictors constant.
+
+The estimated slope parameter is $b_4=$ `r round(coefficients(lm_fit)[5], 3)`. In other words, for each one unit increase in log-transformed diesel PM, the expected change in the asthma ED visit rate is `r round(coefficients(lm_fit)[5], 3)`, holding all other predictors constant.
+
+The estimated slope parameter is $b_5=$ `r round(coefficients(lm_fit)[6], 3)`. In other words, for each one unit increase in log-transformed poverty percentage, the expected change in the asthma ED visit rate is `r round(coefficients(lm_fit)[6], 3)`, holding all other predictors constant.
+
+The estimated intercept is $b_0=$ `r round(coefficients(lm_fit)[1], 3)`. This represents the predicted asthma ED visit rate when all predictors are zero. This is not realistic (zero PM2.5, zero traffic, etc.), so it is mainly useful for constructing the regression equation.
+
+Keep in mind that because many of the predictors are highly correlated, these individual coefficient estimates are affected by multicollinearity. This means that interpretations of single variables are less reliable, but the model can still provide accurate predictions for asthma ED visits. Additionally, the scale of predictor variables vary a lot. For example, ozone is measured in ppm, which is much smaller than PM2.5 which is measured in $\mu g/m^3$, further suggesting the interpretation of individual coefficients is unreliable.
+
+```{r cross-validation}
 #| echo: false
 #| warning: false
 #| message: false
-#| fig-cap: "Scatter plot of fitted values (x-axis) and residuals (y-axis) for a simple linear regression with score differential as the response and run play emphasis as the predictor."
+# k fold cross validation
+k <- 10
+n <- nrow(data)
+folds <- sample(rep(1:k, length.out = n))
+
+cv_rmse <- numeric(k)
+
+for (i in 1:k) {
+  train_data <- data[folds != i, ]
+  test_data  <- data[folds == i, ]
+  
+  fit <- lm(
+    Asthma ~ PM2.5 + Ozone + traffic_log + diesel_log + poverty_log,
+    data = train_data
+  )
+  
+  preds <- predict(fit, newdata = test_data)
+  cv_rmse[i] <- sqrt(mean((test_data$Asthma - preds)^2))
+}
+```
+The average cross-validated RMSE was `r round(mean(cv_rmse), 2)`. This represents an estimate of how far, on average, the model's predictions deviate from the observed asthma ED visit rates for new census tracts. Since the mean asthma ED visits was `r round(mean(data$Asthma), 2)`, the RMSE is relatively high, about half of the average asthma ED visit rate. This indicates that while the model captures some of the overall trends, its predictive accuracy for an individual census tract is limited.
+
+```{r fig-residual}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-cap: "Residuals versus fitted values for the multiple linear regression model predicting asthma ED visit rates."
 #| fig-pos: "H"
+
 plot_dat <- data.frame(
   resid = resid(lm_fit),
   fitted = fitted(lm_fit)
 )
+
 ggplot(plot_dat, aes(x = fitted, y = resid)) +
-  geom_point() +
+  geom_point(alpha = 0.6) +
   geom_hline(yintercept = 0, linetype = "dashed") +
   theme_pubr() +
-  ylab("Residual (observed - fitted)") +
+  ylab("Residual (observed − fitted)") +
   xlab("Fitted value") +
-  ggtitle("Residuals vs. fitted value plot")
+  ggtitle("Residuals vs. Fitted Values")
 ```
 
-@fig-rpe-residual shows the residuals vs. fitted value plot. The errors seem to be spread out relatively evenly, validating the linearity assumption. There also looks to be constant error variance due to an even spread without a clear cone shape in the residuals.
+@fig-residual shows the residuals vs. fitted value plot. The errors seem to be spread out relatively evenly, validating the linearity assumption. However, there is a noticeable cone shape, indicating heteroscedasticity, or that error variance is not constant. Although heteroscedasticity can affect inference, it is less of a concern for prediction. This is because the predictions remain unbiased, and only the predicted variance is overestimated or underestimated for certain fitted values.
 
-```{r fig-rpe-qqplot}
+```{r fig-qqplot}
 #| echo: false
 #| warning: false
 #| message: false
-#| fig-cap: "Q-Q plot of residuals from a simple linear regression with score differential as the response and run play emphasis as the predictor."
+#| fig-cap: "Q–Q plot of residuals from the multiple linear regression model predicting asthma ED visit rates."
 #| fig-pos: "H"
+
 plot_dat <- data.frame(resid = resid(lm_fit))
 
 ggplot(plot_dat, aes(sample = resid)) +
@@ -147,33 +275,17 @@ ggplot(plot_dat, aes(sample = resid)) +
   theme_pubr() +
   ylab("Sample Quantiles") +
   xlab("Theoretical Quantiles") +
-  ggtitle("Q-Q Plot of Residuals")
+  ggtitle("Q–Q Plot of Residuals")
 ```
 
-@fig-rpe-qqplot shows the quantile-quantile plot. The errors seem to be normal, as the residuals lie close to the reference line shown in red.
-
-```{r rpe-test}
-#| echo: false
-#| warning: false
-#| message: false
-# get summary of lm
-summary <- summary(lm_fit)
-
-# get t-value and p-value
-t_value <- summary$coefficients["run_play_emphasis", "t value"]
-p_value <- summary$coefficients["run_play_emphasis", "Pr(>|t|)"]
-```
-
-I use a two-sided t-test to compare the null hypothesis $\beta_1=0$ with the two-sided alternative hypothesis $\beta_1\not=0$. In order for this test to be valid, we require that the relationship between offense balance and score differential is linear, there is constant variance, errors are normally distributed, and independence of error terms. The independence assumption is questionable for two reasons. First, repeated observations for the same team over different seasons (Niners in 2011 vs Niners in 2012) are probably not independent. Second, within a season, score differentials are negatively dependent across teams because the sum of all team score differentials must equal zero. The violation of independence for score differentials may not change the estimated slope, but it is still a limitation of the model.
-
-The test statistic is $t=$ `r round(summary(lm_fit)$coefficients["run_play_emphasis", "t value"], 3)`. The p-value is $p=$ `r signif(summary(lm_fit)$coefficients["run_play_emphasis", "Pr(>|t|)"], 3)`. The test statistic means that the estimated slope is many standard errors away from 0, and the p-value means that there is an extremely small chance of observing this slope estimate if the true slope were actually 0. Because of the very large t-value and extremely small p-value, the test indicates that run play emphasis is statistically significantly associated with score differential.
+@fig-qqplot shows the quantile-quantile plot. There is some deviation from the reference line shown in red on the right side, indicating unusually high residuals. This suggests the model may underpredict asthma ED visits for those census tracts and that the normality of errors assumption is violated. However, because the goal for the model is prediction, violating the normality of errors assumption is less of an issue, especially since the cross-validated RMSE gives an estimate of predictive performance.
 
 # Discussion {#sec-discussion}
 
-Overall, there does seem to be a positive linear association between run play emphasis and score differential. Therefore, having a more diverse playbook and an emphasis on rushing plays rather than just focusing on pass plays is associated with having a better score differential and therefore more wins in the NFL. This means that NFL teams should continue to invest resources into both the passing and rushing game rather than just focusing on the passing game, even though recent rule changes have favored the passing game.
+This study developed a multiple linear regression model to predict age-adjusted asthma emergency department visit rates across California census tracts using air pollution indicators (PM2.5, ozone, diesel PM, traffic density) and socioeconomic factors (poverty percentage). The goal was to predict asthma ED visit rates using publicly available census tract data. Key findings highlight the presence of multicollinearity and differences in variable scaling, making interpretation of individual predictor variables unreliable. The model had moderate predictive performance, with an RMSE roughly half of the mean asthma ED visit rate. Residual analysis suggested some heteroscedasticity and non-normal errors, but these issues are less concerning for this model's goal of prediction.
 
-Some limitations of the model include using only a single predictor (run play emphasis), error independence assumptions, and measurement of the run play emphasis. Including multiple predictors like defense for predicting score differential would result in a model that better explains what is driving differences in score differential. Independence is a concern for two reasons. First, repeated observations for the same team across seasons are probably not independent, since a bad team in one season is probably also a bad team in the next season. Second, within a given season, the sum of all team score differentials must equal zero, meaning score differentials are negatively dependent across teams. Having poor performance from players could also be a bigger factor in score differential rather than offensive play selection. Furthermore, the measurement of offense play balance used in this model was a simple ratio of the number of pass and run plays. The model does not factor play quality like yards gained and efficiency, two factors which might help make the model more robust. Lastly, the regression model used does not imply causality. One big potential factor is that strong teams tend to have score leads, which incentivizes them to run the ball more to drain the clock. This is because running the ball is safer (fumbles are less likely than interceptions), and running the ball does not stop the clock compared to incompletions from passing.
+There are several limitations of the model. First, the analysis relied on census-tract level data, so individual-level risk factors were not considered. Second, there may be key environmental or socioeconomic variables missing from the dataset used, which could affect predictive accuracy. Lastly, some of the variables have uncertainty. PM2.5 and ozone concentrations were partially estimated using satellite and spatial interpolation methods which may reduce accuracy. Diesel PM and traffic density are based on modeled emissions and traffic volume estimates, which might have measurement errors. Poverty percentage was also calculated from the ACS survey, leading to potential sampling error.
 
-Some future steps could be a multiple linear regression using both offensive stats and defensive stats to predict score differential. This model would let us see which variables are affecting score differential the most. Another potential question would be how NFL offenses are evolving over time. The media has suggested that over time, the NFL has become a more pass focused league as passing offenses tend to have more explosive plays and are more entertaining to watch for fans. Checking for trends over time could verify if that is actually the case. For data collection, I think an important statistic is how well teams do in the playoffs and ultimately, which team wins the Superbowl. There have always been teams that perform well in the regular season but lose out in the playoffs, and looking at what statistics increase a team's chances of winning in the playoffs and the Superbowl would be valuable information for NFL teams.
+Some future improvements could include additional predictors, specifically other socioeconomic predictors like education level, race/ethnicity, or healthcare access. Nonlinear modeling techniques like machine learning or deep learning models could provide better predictive accuracy if interpretation is not prioritized. Overall, this study shows that different environmental and socioeconomic indicators can be used as a solid baseline for asthma risk rate predictions at a population level.
 
 # References
