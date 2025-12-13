@@ -1,6 +1,6 @@
-# MATH261A Paper 2
+# MATH261A Asthma ED Visit Rates Paper
 Author: Giovanni Hsieh  
-Date of Submission: MM/DD/YYYY
+Date of Submission: 12/12/2025
 
 ## Project Structure
 
