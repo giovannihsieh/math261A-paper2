@@ -1,6 +1,6 @@
 ---
-title: "Predicting Asthma Emergency Department Visit Rates Across California Census Tracts"
-subtitle: "A Multiple Linear Regression Model Incorporating Air Pollution and Socioeconomic Factors"
+title: "Predicting Asthma Emergency Department Visit Rates Across California Census Tracts Using Air Pollution and Socioeconomic Indicators"
+subtitle: "A Population Level Analysis Using Multiple Linear Regression"
 author: "Giovanni Hsieh"
 thanks: "Project repository available at: [https://github.com/giovannihsieh/math261A-paper2](https://github.com/giovannihsieh/math261A-paper2)."
 date: today
